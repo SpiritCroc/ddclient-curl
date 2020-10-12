@@ -2804,9 +2804,12 @@ sub nic_dyndns2_update {
         my $hosts = join(',', @hosts);
         my $h     = $hosts[0];
         my $ip    = $config{$h}{'wantip'};
+        my $ipv6  = $config{$h}{'wantipv6'};
         delete $config{$_}{'wantip'} foreach @hosts;
+        delete $config{$_}{'wantipv6'} foreach @hosts;
+        my $ipfull = join ',', $ip, $ipv6;
 
-        info("setting IP address to %s for %s", $ip, $hosts);
+        info("setting IP address to %s for %s", $ipfull, $hosts);
         verbose("UPDATE:", "updating %s", $hosts);
 
         ## Select the DynDNS system to update
@@ -2831,7 +2834,7 @@ sub nic_dyndns2_update {
 
         $url .= "&hostname=$hosts";
         $url .= "&myip=";
-        $url .= $ip if $ip;
+        $url .= $ipfull if $ipfull;
 
         ## some args are not valid for a custom domain.
         $url .= "&wildcard=ON" if ynu($config{$h}{'wildcard'}, 1, 0, 0);
@@ -2860,15 +2863,18 @@ sub nic_dyndns2_update {
             $config{$h}{'status'} = $status;
             if ($status eq 'good') {
                 $config{$h}{'ip'}    = $ip;
+                $config{$h}{'ipv6'}  = $ipv6;
                 $config{$h}{'mtime'} = $now;
-                success("updating %s: %s: IP address set to %s", $h, $status, $ip);
+                success("updating %s: %s: IP address set to %s", $h, $status, $ipfull);
 
             } elsif (exists $errors{$status}) {
                 if ($status eq 'nochg') {
                     warning("updating %s: %s: %s", $h, $status, $errors{$status});
                     $config{$h}{'ip'}     = $ip;
+                    $config{$h}{'ipv6'}   = $ipv6;
                     $config{$h}{'mtime'}  = $now;
                     $config{$h}{'status'} = 'good';
+                    $config{$h}{'status-ipv6'} = 'good';
 
                 } else {
                     failed("updating %s: %s: %s", $h, $status, $errors{$status});
@@ -2884,7 +2890,7 @@ sub nic_dyndns2_update {
 
                 $sec = $wait * $scale;
                 $config{$h}{'wtime'} = $now + $sec;
-                warning("updating %s: %s: wait $wait $units before further updates", $h, $status, $ip);
+                warning("updating %s: %s: wait $wait $units before further updates", $h, $status, $ipfull);
 
             } else {
                 failed("updating %s: unexpected status (%s)", $h, $line);
